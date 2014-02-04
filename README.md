@@ -11,7 +11,7 @@ technologies:
  - peg.js
 
 example template:
-```
+```Python
 #this is my config file
 #I use whatever native text-based syntax it wants as long as I avoid double open 
 #squiggly bracket double closed squiggly bracket I am ok. If those are needed at 
@@ -39,7 +39,12 @@ env.set("list1", [
 ```
 
 expected output:
-```
+```Python
+#this is my config file
+#I use whatever native text-based syntax it wants as long as I avoid double open 
+#squiggly bracket double closed squiggly bracket I am ok. If those are needed at 
+#some point it can be implemented without much ado.
+
 mysettingheader:
     some_static_setting=boring
     some_exciting_setting=foo
