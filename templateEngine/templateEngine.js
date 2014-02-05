@@ -79,7 +79,7 @@ function Engine(){
     this.parser = peg.buildParser(
         "start = blob " +
             "blob = body:(variable_ref)+ " +
-            "variable_ref = '{{' variable:variable '}}' " +
+            "variable_ref = '{{' ws? variable:variable ws? '}}' " +
                 "{return {'token':'var','data':variable};} / foreach " +
             "variable = variable:(symbol (variable_property)*) " +
                 "{if(variable[1].length>0){return variable[0] + '.' + variable[1].join('.');}else{return variable[0];} } " +
@@ -89,20 +89,18 @@ function Engine(){
                 "body:blob  " +
                 "'{%' ws 'end' ws 'foreach' ws '%}' ('\\n')? " +
                 "{return {'token':'foreach', 'var':iter, 'list':list, 'body':body}; } / text " +
-            "text = text_value:( ('{' [^\\{%])? ('}' [^\\}])? ('%'[^\\}])? [^\\{\\}%]+ ) " +
+            "text = text_value:( ('%'[^\\}])? [^\\{\\}%]+ ) " +
                 "{ " +
                     "var retVal=''; " +
                     "if(!!text_value[0]){retVal+=text_value[0].join('')} " +
                     "if(!!text_value[1]){retVal+=text_value[1].join('')} " +
-                    "if(!!text_value[2]){retVal+=text_value[2].join('')} " +
-                    "if(!!text_value[3]){retVal+=text_value[3].join('')} " +
                     "return {'token':'text', 'data':retVal};} " +
                 " / left_curly_brace "+
             "left_curly_brace = '{{' squiggles:('{')+  " +
-                "{var b = String.fromCharCode(123); return {'token':'text', 'data': b + squiggles.join('')}; } " +
-                " / right_curly_brance " +
-            "right_curly_brance = '}}' squiggles:('}')+  " +
-                "{var b = String.fromCharCode(125); return {'token':'text', 'data': b + squiggles.join('')}; } " +
+                "{return {'token':'text', 'data': squiggles.join('')}; } " +
+                " / right_curly_brace " +
+            "right_curly_brace = percent:('%'?) '}}' squiggles:('}')+  " +
+                "{var s = ''; if(!!percent){s='%';} return {'token':'text', 'data': s+squiggles.join('')}; } " +
             "symbol = symbol:([A-Za-z][A-Za-z0-9]*) " +
                 "{if(symbol.length>1){return symbol[0] + symbol[1].join('');}else{ return symbol.join('')};} " +
             "ws = ([ \\t\\n\\r])+ "

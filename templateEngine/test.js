@@ -8,7 +8,7 @@ var engine = new Engine();
 
 configData =
     "mysettingheader:\n" +
-        "    some_static_setting={{{{boring}}}}\n" +
+        "    some_static_setting={{{%boring}}}\n" +
         "    some_exciting_setting={{variable1}}\n" +
         "\n" +
         "headerwithvariableentries:\n" +
@@ -48,3 +48,36 @@ env.set("obj", {'a':'OBJ_A_VALUE', 'b': {'c':'OBJ_B_C_VALUE', 'd':'OBJ_B_D_VALUE
 env.set("list", [['a','b','c'],['a2','b2','c2'],['a3','b3','c3']]);
 
 console.log(engine.processTemplate(configData, env));
+
+
+//-----------------------------------------------------------------------------
+//test with nested operations (i.e. generating a template with a template
+// or, a meta-template)
+
+
+configData =
+    "mysettingheader:\n" +
+        "    recursive dereference ={{{{ {{variable2}} }}}}\n" +
+        "    some_exciting_setting={{variable1}}\n" +
+        "    recursive op = {{{% foreach item in list1 %}}}" +
+        "        {{{{item.name}}}} {{{{item.host}}}}:{{{{item.port}}}}" +
+        "    {{{% end foreach %}}}\n" +
+        "\n" +
+        "headerwithvariableentries:\n" +
+        "#list1 has to be a javascript array in the given environment\n" +
+        "{% foreach item in list1 %}\n" +
+        "    setting {{item.name}} {{item.host}}:{{item.port}} #whitespace is preserved\n" +
+        "{% end foreach %}\n";
+
+env = new Environment({
+    "variable1": "foo",
+    "variable2": "variable1",
+    "list1": [
+        {'name':'foo', 'host':'127.0.0.1', 'port':'80'},
+        {'name':'bar', 'host':'127.0.0.1', 'port':'443'}
+    ]
+});
+
+//console.log(engine.processTemplate(configData, env));
+
+console.log(engine.processTemplate(engine.processTemplate(configData, env), env));
