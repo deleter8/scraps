@@ -59,7 +59,7 @@ configData =
     "mysettingheader:\n" +
         "    recursive dereference ={{{{ {{variable2}} }}}}\n" +
         "    some_exciting_setting={{variable1}}\n" +
-        "    recursive op = {{{% foreach item in list1 %}}}" +
+        "    recursive op = {{{% foreach item in {{listref}} %}}}" +
         "        {{{{item.name}}}} {{{{item.host}}}}:{{{{item.port}}}}" +
         "    {{{% end foreach %}}}\n" +
         "\n" +
@@ -72,6 +72,7 @@ configData =
 env = new Environment({
     "variable1": "foo",
     "variable2": "variable1",
+    "listref":"list1",
     "list1": [
         {'name':'foo', 'host':'127.0.0.1', 'port':'80'},
         {'name':'bar', 'host':'127.0.0.1', 'port':'443'}
