@@ -26,7 +26,7 @@ headerwithvariableentries:
 
 example environment for above template:
 ```JavaScript
-var env = new Stack();
+var env = new Environment();
 env.set("variable1", "foo");
 env.set("list1", [
   {'name':'foo', 'host':'127.0.0.1', 'port':'80'}, 
