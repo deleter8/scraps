@@ -8,10 +8,11 @@ technologies:
 
 example template:
 ```Python
-#this is my config file
-#I use whatever native text-based syntax it wants as long as I avoid double open 
-#squiggly bracket double closed squiggly bracket I am ok. If those are needed at 
-#some point it can be implemented without much ado.
+# this is my config file
+# I use whatever native text-based syntax it wants as long as I avoid double open 
+# squiggly bracket double closed squiggly bracket I am ok. If those are needed
+# they can be achieved by adding two brackets to the desired output. E.g, '{{{'
+# will => '{' and '{{{{' will => '{{', etc.
 
 mysettingheader:
     some_static_setting=boring
@@ -36,10 +37,11 @@ env.set("list1", [
 
 expected output:
 ```Python
-#this is my config file
-#I use whatever native text-based syntax it wants as long as I avoid double open 
-#squiggly bracket double closed squiggly bracket I am ok. If those are needed at 
-#some point it can be implemented without much ado.
+# this is my config file
+# I use whatever native text-based syntax it wants as long as I avoid double open 
+# squiggly bracket double closed squiggly bracket I am ok. If those are needed
+# they can be achieved by adding two brackets to the desired output. E.g, '{{{'
+# will => '{' and '{{{{' will => '{{', etc.
 
 mysettingheader:
     some_static_setting=boring
