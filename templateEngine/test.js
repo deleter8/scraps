@@ -8,14 +8,14 @@ var engine = new Engine();
 
 configData =
     "mysettingheader:\n" +
-        "    some_static_setting=boring\n" +
+        "    some_static_setting={{{{boring}}}}\n" +
         "    some_exciting_setting={{variable1}}\n" +
         "\n" +
         "headerwithvariableentries:\n" +
-        "#list1 has to be a javascript array in the given environment\n" +
+        "#list1 has to be a javascript array in the given environment\n" /*+
         "{% foreach item in list1 %}\n" +
         "    setting {{item.name}} {{item.host}}:{{item.port}} #whitespace is preserved\n" +
-        "{% end foreach %}\n";
+        "{% end foreach %}\n"*/;
 
 env = new Environment({
     "variable1": "foo",
