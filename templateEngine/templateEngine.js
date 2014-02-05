@@ -89,7 +89,7 @@ function Engine(){
             "foreach = '{%' ws 'foreach' ws iter:symbol ws 'in' ws list:symbol ws '%}' ([ \t]* ('\\n'))? " +
                 "body:blob  " +
                 "'{%' ws 'end' ws 'foreach' ws '%}' ('\\n')? " +
-                "{return {'token':'foreach', 'var':iter, 'list':list, 'newline':!!newline, 'body':body}; } " +
+                "{return {'token':'foreach', 'var':iter, 'list':list, 'body':body}; } " +
             "symbol = symbol:([A-Za-z][A-Za-z0-9]*) " +
                 "{if(symbol.length>1){return symbol[0] + symbol[1].join('');}else{ return symbol.join('')};} " +
             "ws = ([ \\t\\n\\r])+ "
