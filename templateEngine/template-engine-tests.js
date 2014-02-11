@@ -23,14 +23,8 @@ configData =
         "num:{{num}}\n" +
         "{% end foreach %}\n" +
         "{% foreach role in test_role1 %}\n" +
-        //"crap\n" +
         "{% end foreach %}" +
     "";
-//"role_data:{{test_role1.test_data}}\n" +
-//    "{% foreach item in list1 %}\n" +
-//    "{% foreach item in list1 %}\n" +
-    //"machine:{{instance.name}}:{{instance.hostAddress}}\n" +
-//"{% end foreach %}\n";
 
 function TestClass(){
     this.privateVariable = "private_value";
