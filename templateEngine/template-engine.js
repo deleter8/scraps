@@ -41,7 +41,6 @@ function evalInvoke(varExpr, parent, environment){
 
     switch(varExpr.token){
         case 'method':
-            //console.log("invoking method '" + JSON.stringify(varExpr) +"'");
             var argVals = varExpr.args.map(function(expr){return evaluateTree(expr, environment);});
             value = parent.apply(parent.parent, argVals);
             subInvokeParent = null;
@@ -49,7 +48,6 @@ function evalInvoke(varExpr, parent, environment){
 
         case 'property':
             if(!(varExpr.data in parent)){throw "object '" + varExpr.data + "' does not exist in parent";}
-            //console.log("getting value of property '" + varExpr.data + "' out of object '" + JSON.toString(parent) + "'");
             value = parent[varExpr.data];
             subInvokeParent = parent;
             break;
