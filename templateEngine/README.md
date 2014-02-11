@@ -34,7 +34,7 @@ env.set("list1", [
   {'name':'foo', 'host':'127.0.0.1', 'port':'80'}, 
   {'name':'bar', 'host':'127.0.0.1', 'port':'443'}
 ]);
-env.set("obj", {"fun":function(var){return var + var;}});
+env.set("obj", {"fun":function(a){return a + a;}});
 ```
 
 expected output:
