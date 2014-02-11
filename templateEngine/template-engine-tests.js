@@ -1,5 +1,5 @@
-var Engine = require('./templateEngine.js').Engine;
-var Environment = require('./templateEngine.js').Environment;
+var Engine = require('./template-engine').Engine;
+var Environment = require('./template-engine').Environment;
 
 //-----------------------------------------------------------------------------
 //Some test code:
@@ -10,19 +10,46 @@ configData =
     "mysettingheader:\n" +
         "    some_static_setting={{{%boring}}}\n" +
         "    some_exciting_setting={{variable1}}\n" +
+        "    some_func_based_setting={{ fun.fooFunc(variable1)(variable1).valueGetter() }}\n" +
+        "    some_literal_based_setting={{ fun.fooFunc('as\\'df')(\"que\\\"rty\").valueGetter() }}\n" +
+        "    some_object_based_setting={{ testObject.publicGetter() }}\n" +
         "\n" +
         "headerwithvariableentries:\n" +
         "#list1 has to be a javascript array in the given environment\n" +
         "{% foreach item in list1 %}\n" +
         "    setting {{item.name}} {{item.host}}:{{item.port}} #whitespace is preserved\n" +
-        "{% end foreach %}\n";
+        "{% end foreach %}\n" +
+        "{% foreach num in list_container.inner_list %}\n" +
+        "num:{{num}}\n" +
+        "{% end foreach %}\n" +
+        "{% foreach role in test_role1 %}\n" +
+        //"crap\n" +
+        "{% end foreach %}" +
+    "";
+//"role_data:{{test_role1.test_data}}\n" +
+//    "{% foreach item in list1 %}\n" +
+//    "{% foreach item in list1 %}\n" +
+    //"machine:{{instance.name}}:{{instance.hostAddress}}\n" +
+//"{% end foreach %}\n";
+
+function TestClass(){
+    this.privateVariable = "private_value";
+}
+
+TestClass.prototype.publicGetter = function(){
+    return this.privateVariable;
+};
 
 env = new Environment({
     "variable1": "foo",
     "list1": [
         {'name':'foo', 'host':'127.0.0.1', 'port':'80'},
         {'name':'bar', 'host':'127.0.0.1', 'port':'443'}
-    ]
+    ],
+    "list_container":{'inner_list':[1,2,3]},
+    "test_role1":{"test_data":"data", "instances":[{"name":"name", "hostAddress":"address"}]},
+    "fun":{"fooFunc":function(val1){return function(val2){return {'valueGetter':function(){return val1+val2;}};};}},
+    "testObject": new TestClass()
 });
 
 console.log(engine.processTemplate(configData, env));
