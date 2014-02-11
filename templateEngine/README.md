@@ -1,6 +1,6 @@
 #templateEngine
 
-Small engine to parse out and replace variable references and simple list expansions (using foreach) with a provided environment.
+Small engine to parse out and replace variable and function expressions and simple list expansions (using foreach) with a provided environment.
 
 technologies:
  - node.js
@@ -17,6 +17,7 @@ example template:
 mysettingheader:
     some_static_setting=boring
     some_exciting_setting={{variable1}}
+    even_more_exciting={{ obj.fun("literal") }}
 
 headerwithvariableentries:
 #list1 has to be a javascript array in the given environment
@@ -33,6 +34,7 @@ env.set("list1", [
   {'name':'foo', 'host':'127.0.0.1', 'port':'80'}, 
   {'name':'bar', 'host':'127.0.0.1', 'port':'443'}
 ]);
+env.set("obj", {"fun":function(var){return var + var;}});
 ```
 
 expected output:
@@ -46,6 +48,7 @@ expected output:
 mysettingheader:
     some_static_setting=boring
     some_exciting_setting=foo
+    even_more_exciting=literalliteral
 
 headerwithvariableentries:
 #list1 has to be a javascript array in the given environment
