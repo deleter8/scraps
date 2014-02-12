@@ -35,7 +35,7 @@ Environment.prototype.tryGet = function(name){
     return {'exists':false};
 };
 
-function evalInvoke(varExpr, parent, environment){
+function evaluateInvoke(varExpr, parent, environment){
     var value = undefined;
     var subInvokeParent = null;
 
@@ -55,7 +55,7 @@ function evalInvoke(varExpr, parent, environment){
 
     if(!!varExpr.invoke){
         value.parent = subInvokeParent;
-        return evalInvoke(varExpr.invoke, value, environment);
+        return evaluateInvoke(varExpr.invoke, value, environment);
     }
 
     return value;
@@ -71,7 +71,7 @@ function evaluateVariable(varExpr, environment){
     if(!!varExpr.invoke){
         //this should be an object(/function) or we're going to run into an error invoking on it anyway
         lookup.value.parent = null;
-        return evalInvoke(varExpr.invoke, lookup.value, environment);
+        return evaluateInvoke(varExpr.invoke, lookup.value, environment);
     }
 
     return lookup.value;
