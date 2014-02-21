@@ -1,4 +1,5 @@
 var peg = require("pegjs");
+var Q = require("q");
 
 function Environment(init){
     if(!init) init = {};
@@ -35,6 +36,127 @@ Environment.prototype.tryGet = function(name){
     return {'exists':false};
 };
 
+function evaluateInvokeAsync(varExpr, parent, environment){
+    var valuePromise = undefined;
+    var subInvokeParent = null;
+
+    switch(varExpr.token){
+        case 'method':
+            var argValPromises = varExpr.args.map(function(expr){return evaluateTreeAsync(expr, environment);});
+            valuePromise = Q.allSettled(argValPromises)
+                //strip off promise metadata
+                .then(function(promiseResults){
+                    return promiseResults.map(function(promise){return promise.value})
+                })
+                //apply method invocation
+                .then(function(argVals){
+                    return parent.apply(parent.parent, argVals)
+                });
+
+            subInvokeParent = null;
+            break;
+
+        case 'property':
+            if(!(varExpr.data in parent)){throw Error("object '" + varExpr.data + "' does not exist in parent");}
+            valuePromise = Q.fcall(function(){return parent[varExpr.data];});
+            subInvokeParent = parent;
+            break;
+    }
+
+    if(!!varExpr.invoke){
+        return valuePromise.then(function(value){
+            value.parent = subInvokeParent;
+            return evaluateInvokeAsync(varExpr.invoke, value, environment);
+        });
+    }
+
+    return valuePromise.then(function(val){return val;});
+}
+
+function evaluateVariableAsync(varExpr, environment){
+
+    var lookup = environment.tryGet(varExpr.data);
+    if(!lookup.exists){
+        throw Error("variable '" + varExpr.data + "' does not exist in environment");
+    }
+
+    if(!!varExpr.invoke){
+        //this should be an object(/function) or we're going to run into an error invoking on it anyway
+        lookup.value.parent = null;
+        return evaluateInvokeAsync(varExpr.invoke, lookup.value, environment);
+    }
+
+    return Q.fcall(function(){return lookup.value});
+}
+
+function evaluateTreeAsync(tree, environment){
+    //console.log('-- evaluating: ' + JSON.stringify(tree));
+    if(tree instanceof Array){
+        var evalPromises = tree.map(function(subtree){
+            return evaluateTreeAsync(subtree, environment);
+        });
+
+        return Q.allSettled(evalPromises)
+            .then(function(promiseResults){
+                return promiseResults
+                    .map(function(result){
+                        return result.value;
+                    })
+                    .reduce(function(soFar,nextItem){
+                        return soFar + nextItem;
+                    })
+            });
+
+
+    }else if(tree.hasOwnProperty('token')){
+        switch(tree['token']){
+            case 'text': return Q.fcall(function(){return tree['data'];});
+            case 'literal': return Q.fcall(function(){return tree['data'];});
+            case 'var':
+            {
+                return evaluateVariableAsync(tree, environment);
+            }
+            case 'foreach':
+            {
+                var listExpr = tree['list'];
+                var getList = evaluateVariableAsync(listExpr, environment);
+
+                return getList.then(function(list){
+                    var value = Q.fcall(function(){
+                        environment.push();
+                        return '';
+                    });
+
+                    for (var j = 0; j < list.length; j++){
+                        var iter = function(j){
+                            value = value
+                                .then(function(soFar){
+                                    environment.set(tree['var'], list[j]);
+                                    return soFar;
+                                })
+                                .then(function(soFar){
+                                    return evaluateTreeAsync(tree['body'], environment)
+                                        .then(function(value){
+                                            return soFar + value;
+                                        })
+                                });
+                        };
+                        iter(j);
+                    }
+
+                    return value.then(function(iterationResult){
+                        environment.pop();
+                        return iterationResult;
+                    });
+                });
+            }
+        }
+    }
+
+    throw Error("error evaluating tree node: " + JSON.stringify(tree));
+}
+
+
 function evaluateInvoke(varExpr, parent, environment){
     var value = undefined;
     var subInvokeParent = null;
@@ -47,7 +169,7 @@ function evaluateInvoke(varExpr, parent, environment){
             break;
 
         case 'property':
-            if(!(varExpr.data in parent)){throw "object '" + varExpr.data + "' does not exist in parent";}
+            if(!(varExpr.data in parent)){throw Error("object '" + varExpr.data + "' does not exist in parent");}
             value = parent[varExpr.data];
             subInvokeParent = parent;
             break;
@@ -65,7 +187,7 @@ function evaluateVariable(varExpr, environment){
 
     var lookup = environment.tryGet(varExpr.data);
     if(!lookup.exists){
-        throw "variable '" + varExpr.data + "' does not exist in environment";
+        throw Error("variable '" + varExpr.data + "' does not exist in environment");
     }
 
     if(!!varExpr.invoke){
@@ -111,7 +233,7 @@ function evaluateTree(tree, environment){
         }
     }
 
-    throw "error evaluating tree node: " + JSON.stringify(tree);
+    throw Error("error evaluating tree node: " + JSON.stringify(tree));
 }
 
 function Engine(){
@@ -169,6 +291,15 @@ function Engine(){
 Engine.prototype.processTemplate = function(template, environment){
     var tree = this.parser.parse(template);
     return evaluateTree(tree, environment);
+};
+
+Engine.prototype.processTemplateAsync = function(template, environment){
+    var tree = this.parser.parse(template);
+    try{
+        return evaluateTreeAsync(tree, environment);
+    }catch(err){
+        return Q.fcall(function(){return err;})
+    }
 };
 
 module.exports = {

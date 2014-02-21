@@ -1,5 +1,6 @@
 var Engine = require('./template-engine').Engine;
 var Environment = require('./template-engine').Environment;
+var Q = require("q");
 
 //-----------------------------------------------------------------------------
 //Some test code:
@@ -23,7 +24,7 @@ configData =
         "num:{{num}}\n" +
         "{% end foreach %}\n" +
         "{% foreach role in test_role1 %}\n" +
-        "{% end foreach %}" +
+        "{% end foreach %}\n" +
     "";
 
 function TestClass(){
@@ -43,10 +44,22 @@ env = new Environment({
     "list_container":{'inner_list':[1,2,3]},
     "test_role1":{"test_data":"data", "instances":[{"name":"name", "hostAddress":"address"}]},
     "fun":{"fooFunc":function(val1){return function(val2){return {'valueGetter':function(){return val1+val2;}};};}},
-    "testObject": new TestClass()
+    "testObject": new TestClass(),
+    "asyncFunc":function(a){return Q.delay(1500).then(function(){return a+a;});}
 });
 
 console.log(engine.processTemplate(configData, env));
+
+configData = configData + "async resolved data: {{ asyncFunc('async_test ') }}\n";
+
+engine.processTemplateAsync(configData, env)
+.then(function(value){
+    console.log("now async:\n---------------");
+    console.log(value);
+    console.log("---------------\nend async");
+});
+
+
 
 //-----------------------------------------------------------------------------
 //test with nested foreach
