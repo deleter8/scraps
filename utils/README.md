@@ -29,7 +29,11 @@ var value = {
     "uhoh":[[{"athing":["value2"]}]]
 }
 
-var replaced = replaceRecursiveSync(value, function(value){return value === "value2";}, function(value){return "replaced";});
+test = function(value){return value === "value2";};
+
+replace = function(value){return "replaced";};
+
+var replaced = replaceRecursiveSync(value, test, replace);
 ```
 
 'replaced' will now equal:
