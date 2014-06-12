@@ -2,6 +2,8 @@ var Engine = require('./template-engine').Engine;
 var Environment = require('./template-engine').Environment;
 var Q = require("q");
 
+//TODO: refactor this to mocha tests rather than just console output that has to be manually verified
+
 //-----------------------------------------------------------------------------
 //Some test code:
 
@@ -12,6 +14,7 @@ configData =
         "    some_static_setting={{{%boring}}}\n" +
         "    some_exciting_setting={{variable1}}\n" +
         "    some_func_based_setting={{ fun.fooFunc(variable1)(variable1).valueGetter() }}\n" +
+        "    some_func_based_setting_with_two_variables={{twoFunc('a','b')}}\n" +
         "    some_literal_based_setting={{ fun.fooFunc('as\\'df')(\"que\\\"rty\").valueGetter() }}\n" +
         "    some_object_based_setting={{ testObject.publicGetter() }}\n" +
         "\n" +
@@ -21,9 +24,22 @@ configData =
         "    setting {{item.name}} {{item.host}}:{{item.port}} #whitespace is preserved\n" +
         "{% end foreach %}\n" +
         "{% foreach num in list_container.inner_list %}\n" +
-        "num:{{num}}\n" +
+        "num:{{num}}{{__isLast(' is last', '')}}{{__isFirst(' is first', '')}}\n" +
         "{% end foreach %}\n" +
-        "{% foreach role in test_role1 %}\n" +
+        "{% foreach innerArray in nestedArray %}\n" +
+        "{{__isFirst('the first ','')}}{{__isLast('the last ','')}}array:\n" +
+        "{% foreach item in innerArray %}\n" +
+        "    arrayitem:{{item}}{{__isLast(' is last', '')}}{{__isFirst(' is first', '')}}\n" +
+        "{% end foreach %}\n" +
+        "{% end foreach %}\n" +
+        "{% foreach role in test_role1 %}\n" + //erroneous iteration over object does not break (might support this eventually)
+        "{% end foreach %}\n" +
+        "first middle last tests:\n"+
+        "{% foreach innerArray in testFirstMiddleLast %}\n" +
+        "\n"+
+        "{% foreach item in innerArray %}\n" +
+        "    arrayitem:{{item}} {{__firstMiddleLast('is 1st','is in the middle','is LAST')}}\n" +
+        "{% end foreach %}\n" +
         "{% end foreach %}\n" +
     "";
 
@@ -45,7 +61,10 @@ env = new Environment({
     "test_role1":{"test_data":"data", "instances":[{"name":"name", "hostAddress":"address"}]},
     "fun":{"fooFunc":function(val1){return function(val2){return {'valueGetter':function(){return val1+val2;}};};}},
     "testObject": new TestClass(),
-    "asyncFunc":function(a){return Q.delay(1500).then(function(){return a+a;});}
+    "twoFunc":function(a,b){return a+a+':'+b},
+    "asyncFunc":function(a){return Q.delay(1500).then(function(){return a+a;});},
+    "nestedArray":[[1,2,3],[9,8,7],['a','b','c']],
+    "testFirstMiddleLast":[[1,2,3,4],[9,8],['a']]
 });
 
 console.log(engine.processTemplate(configData, env));

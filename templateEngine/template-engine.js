@@ -6,8 +6,44 @@ function Environment(init){
     this.scopes = [init];
 }
 
-Environment.prototype.push = function(){
-    this.scopes.push({});
+function validArrayIndex(index) {
+    return /^0$|^[1-9]\d*$/.test(index) && index < 4294967295;
+}
+
+function deepClone(original) {
+    //Note that functions are still by ref, meaning closure variables have the potential to be
+    //problematic when it comes to out-of-order asychronous evaluation of the template
+    if(original instanceof Function){
+        return original;
+    }
+
+    if (original instanceof Array || original instanceof Object) {
+        var clone = original instanceof Array ? [] : {};
+        for (var index in original) {
+            if (original.hasOwnProperty(index)
+                && (!(original instanceof Array) || validArrayIndex(index))) {
+                clone[index] = deepClone(original[index]);
+            }
+        }
+
+        return clone;
+    }
+
+    return JSON.parse(JSON.stringify(original));
+}
+
+Environment.prototype.copy = function(){
+    var newEnv = new Environment();
+    newEnv.scopes = deepClone(this.scopes);
+    return newEnv;
+};
+
+/**
+ * @param {object=} scope - (Optional) Scoped variables
+ */
+Environment.prototype.push = function(scope){
+    scope = scope || {};
+    this.scopes.push(scope);
 };
 
 Environment.prototype.pop = function(){
@@ -57,7 +93,9 @@ function evaluateInvokeAsync(varExpr, parent, environment){
             break;
 
         case 'property':
-            if(!(varExpr.data in parent)){throw Error("object '" + varExpr.data + "' does not exist in parent");}
+            if(!(varExpr.data in parent)){
+                return Q.fcall(function(){throw Error("object '" + varExpr.data + "' does not exist in parent");});
+            }
             valuePromise = Q.fcall(function(){return parent[varExpr.data];});
             subInvokeParent = parent;
             break;
@@ -74,10 +112,9 @@ function evaluateInvokeAsync(varExpr, parent, environment){
 }
 
 function evaluateVariableAsync(varExpr, environment){
-
     var lookup = environment.tryGet(varExpr.data);
     if(!lookup.exists){
-        throw Error("variable '" + varExpr.data + "' does not exist in environment");
+        return Q.fcall(function(){throw Error("variable '" + varExpr.data + "' does not exist in environment");});
     }
 
     if(!!varExpr.invoke){
@@ -122,38 +159,47 @@ function evaluateTreeAsync(tree, environment){
                 var getList = evaluateVariableAsync(listExpr, environment);
 
                 return getList.then(function(list){
-                    var value = Q.fcall(function(){
-                        environment.push();
-                        return '';
-                    });
-
-                    for (var j = 0; j < list.length; j++){
-                        var iter = function(j){
-                            value = value
-                                .then(function(soFar){
-                                    environment.set(tree['var'], list[j]);
-                                    return soFar;
-                                })
-                                .then(function(soFar){
-                                    return evaluateTreeAsync(tree['body'], environment)
-                                        .then(function(value){
-                                            return soFar + value;
-                                        })
-                                });
-                        };
-                        iter(j);
+                    if(!(list instanceof Array)){
+                        return Q.fcall(function(){return '';});
                     }
+                    return (function(environment){
+                        var value = Q.fcall(function(){
+                            environment.push();
+                            return '';
+                        });
 
-                    return value.then(function(iterationResult){
-                        environment.pop();
-                        return iterationResult;
-                    });
+                        for (var j = 0; j < list.length; j++){
+                            (function(j){
+                                value = value
+                                    .then(function(soFar){
+                                        environment.set(tree['var'], list[j]);
+                                        environment.set('__isFirst', function(onlyIfFirst, notFirst){return j===0 ? onlyIfFirst : notFirst;});
+                                        environment.set('__isLast', function(onlyIfLast, notLast){return j===(list.length-1) ? onlyIfLast : notLast;});
+                                        environment.set('__firstMiddleLast', function(onlyFirst, middle, onlyLast){
+                                            return j===0 ? onlyFirst : j===(list.length-1) ? onlyLast : middle;
+                                        });
+                                        return soFar;
+                                    })
+                                    .then(function(soFar){
+                                        return evaluateTreeAsync(tree['body'], environment)
+                                            .then(function(value){
+                                                return soFar + value;
+                                            })
+                                    });
+                            })(j);
+                        }
+
+                        return value.then(function(iterationResult){
+                            environment.pop();
+                            return iterationResult;
+                        });
+                    })(environment.copy());
                 });
             }
         }
     }
 
-    throw Error("error evaluating tree node: " + JSON.stringify(tree));
+    return Q.fcall(function(){throw Error("error evaluating tree node: " + JSON.stringify(tree));});
 }
 
 
@@ -221,11 +267,31 @@ function evaluateTree(tree, environment){
             {
                 var listExpr = tree['list'];
                 var list = evaluateVariable(listExpr, environment);
+                if(!(list instanceof Array)){return '';}
+
                 var value = '';
                 environment.push();
+                environment.set('__isFirst', function(onlyIfFirst, notFirst){return onlyIfFirst;});
+                environment.set('__isLast', function(onlyIfLast, notLast){return notLast;});
+                environment.set('__firstMiddleLast', function(onlyFirst, middle, onlyLast){
+                    return onlyFirst;
+                });
+
                 for (var j = 0; j < list.length; j++){
+                    if(j===(list.length-1)){
+                        environment.set('__isLast', function(onlyIfLast, notLast){return onlyIfLast;});
+                        if(j!==0){
+                            environment.set('__firstMiddleLast', function(onlyFirst, middle, onlyLast){
+                                return onlyLast;
+                            });
+                        }
+                    }
                     environment.set(tree['var'], list[j]);
                     value = value + evaluateTree(tree['body'], environment);
+                    environment.set('__isFirst', function(onlyIfFirst, notFirst){return notFirst;});
+                    environment.set('__firstMiddleLast', function(onlyFirst, middle, onlyLast){
+                        return middle;
+                    });
                 }
                 environment.pop();
                 return value;
@@ -241,47 +307,69 @@ function Engine(){
         "start = blob " +
             "blob = body:(variable_ref)+ " +
             "variable_ref = '{{' ws? variable:variable ws? '}}' " +
-                "{return variable;} / foreach " +
+                "{return variable;} " +
+                "/ foreach " +
             "variable = symbol:symbol invoke:(method_invoke)? " +
-                "{var token = {'token':'var', 'data':symbol}; if(!!invoke){token.invoke = invoke;} return token;} " +
-            "/ literal " +
+                "{" +
+                    "var token = {'token':'var', 'data':symbol}; " +
+                    "if(!!invoke){token.invoke = invoke;} " +
+                    "return token;" +
+                "} " +
+                "/ literal " +
             "method_invoke = '(' args:method_arguments ')' invoke:(method_invoke)? " +
-                "{var token = {'token':'method', 'args':args}; if(!!invoke){token.invoke = invoke;} return token;} " +
-            "/ property_invoke " +
+                "{" +
+                    "var token = {'token':'method', 'args':args}; " +
+                    "if(!!invoke){token.invoke = invoke;} " +
+                    "return token;" +
+                "} " +
+                "/ property_invoke " +
             "property_invoke = '.' symbol:symbol invoke:(method_invoke)? " +
-                "{var token = {'token':'property', 'data':symbol}; if(!!invoke){token.invoke = invoke;} return token; } " +
+                "{" +
+                    "var token = {'token':'property', 'data':symbol};" +
+                    "if(!!invoke){token.invoke = invoke;} " +
+                    "return token; " +
+                "} " +
             "method_arguments = args:( ws? variable ws? (',' ws? variable ws?)* )? " +
                 "{" +
                     "var argslist = []; " +
                     "if( !!args && args.length > 1 ){ argslist.push(args[1]); }" +
-                    "if( !!args && args[1].length > 3){" +
-                        "for(var i = 0; i < args[3].length; i++){" +
-                            "argslist.push(args[3][i]); " +
+                    "if( !!args && args.length > 3){" +
+                      "for(var i = 0; i < args[3].length; i++){" +
+                            "argslist.push(args[3][i][2]); " +
                         "}" +
                     "}" +
-                    "return argslist;" +
+                "return argslist;" +
                 "} " +
             "foreach = '{%' ws 'foreach' ws iter:symbol ws 'in' ws list:variable ws '%}' ([ \t]* ('\\n'))? " +
-            "body:blob?  " +
-            "'{%' ws 'end' ws 'foreach' ws '%}' ('\\n')? " +
-                "{return {'token':'foreach', 'var':iter, 'list':list, 'body':body}; } / text " +
+                "body:blob?  " +
+                "'{%' ws 'end' ws 'foreach' ws '%}' ('\\n')? " +
+                "{return {'token':'foreach', 'var':iter, 'list':list, 'body':body}; } " +
+                "/ text " +
             "text = text_value:$( ('%'[^\\}])? [^\\{\\}%]+ ) " +
                 "{return {'token':'text', 'data':text_value};} " +
-            " / left_curly_brace "+
+                " / left_curly_brace "+
             "left_curly_brace = '{{' squiggles:$('{')+  " +
                 "{return {'token':'text', 'data': squiggles}; } " +
-            " / right_curly_brace " +
+                " / right_curly_brace " +
             "right_curly_brace = percent:('%'?) '}}' squiggles:$('}')+  " +
-                "{var s = ''; if(!!percent){s='%';} return {'token':'text', 'data': s+squiggles}; } " +
-            "symbol = $([A-Za-z_][A-Za-z0-9_]*) " +
+                "{" +
+                    "var s = ''; " +
+                    "if(!!percent){s='%';} " +
+                    "return {'token':'text', 'data': s+squiggles}; " +
+                "} " +
+            "symbol = $([A-Za-z_@][A-Za-z0-9_]*) " +
             "literal = literal:(number_literal / string_literal) " +
                 "{return {'token':'literal', data:literal};} " +
             "number_literal = $([0-9]+ ('.' [0-9]+)?) " +
             "string_literal = '\"' values:(escaped_dbl_quote)* '\"' {return values.join('');}  / " +
             "                 '\\'' values:(escaped_single_quote)* '\\'' {return values.join('');} " +
-            "escaped_dbl_quote =  ('\\\\' '\"') {return '\\\"';} / char_dbl_quote " +
+            "escaped_dbl_quote =  ('\\\\' '\"') " +
+                "{return '\\\"';} " +
+                "/ char_dbl_quote " +
             "char_dbl_quote = [^\"]" +
-            "escaped_single_quote =  ('\\\\' '\\'') {return '\\'';} / char_single_quote " +
+            "escaped_single_quote =  ('\\\\' '\\'') " +
+                "{return '\\'';} " +
+                "/ char_single_quote " +
             "char_single_quote = [^\\']" +
             "ws = ([ \\t\\n\\r])+ "
     );
