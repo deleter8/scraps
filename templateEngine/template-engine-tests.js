@@ -9,8 +9,11 @@ var Q = require("q");
 
 var engine = new Engine();
 
+
 configData =
     "mysettingheader:\n" +
+        " {{\"\\\\\\\"\"}} \n" +
+        " {{'\\\\\\''}} \n" +
         "    some_static_setting={{{%boring}}}\n" +
         "    some_exciting_setting={{variable1}}\n" +
         "    some_func_based_setting={{ fun.fooFunc(variable1)(variable1).valueGetter() }}\n" +

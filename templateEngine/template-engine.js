@@ -361,16 +361,15 @@ function Engine(){
             "literal = literal:(number_literal / string_literal) " +
                 "{return {'token':'literal', data:literal};} " +
             "number_literal = $([0-9]+ ('.' [0-9]+)?) " +
-            "string_literal = '\"' values:(escaped_dbl_quote)* '\"' {return values.join('');}  / " +
-            "                 '\\'' values:(escaped_single_quote)* '\\'' {return values.join('');} " +
-            "escaped_dbl_quote =  ('\\\\' '\"') " +
-                "{return '\\\"';} " +
-                "/ char_dbl_quote " +
-            "char_dbl_quote = [^\"]" +
-            "escaped_single_quote =  ('\\\\' '\\'') " +
-                "{return '\\'';} " +
-                "/ char_single_quote " +
-            "char_single_quote = [^\\']" +
+            "string_literal = '\"' values:(escape_dbl)* '\"' {return values.join('');}  / " +
+            "                 '\\'' values:(escape_single)* '\\'' {return values.join('');} " +
+            "escape_dbl = escape_sequence " +
+                " / char_dbl_quote " +
+            "escape_single = escape_sequence " +
+                " / char_single_quote " +
+            "escape_sequence = values:('\\\\' second:[\\\\nrtbf\"\\']) {return values.join('');} " +
+            "char_dbl_quote = [^\"\\\\] " +
+            "char_single_quote = [^\\'\\\\] " +
             "ws = ([ \\t\\n\\r])+ "
     );
 
