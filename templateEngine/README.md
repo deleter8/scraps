@@ -22,7 +22,7 @@ mysettingheader:
 headerwithvariableentries:
 #list1 has to be a javascript array in the given environment
 {% foreach item in list1 %}
-    setting {{item.name}} {{item.host}}:{{item.port}} #whitespace is preserved
+    setting {{item.name}} {{item.host}}:{{item.port}} {% if item.secure %}--secure{% end if %} #whitespace is preserved
 {% end foreach %}
 ```
 
@@ -31,8 +31,8 @@ example environment for above template:
 var env = new Environment();
 env.set("variable1", "foo");
 env.set("list1", [
-  {'name':'foo', 'host':'127.0.0.1', 'port':'80'}, 
-  {'name':'bar', 'host':'127.0.0.1', 'port':'443'}
+  {'name':'foo', 'host':'127.0.0.1', 'port':'80', 'secure':false}, 
+  {'name':'bar', 'host':'127.0.0.1', 'port':'443', 'secure':true}
 ]);
 env.set("obj", {"fun":function(a){return a + a;}});
 ```
@@ -53,5 +53,5 @@ mysettingheader:
 headerwithvariableentries:
 #list1 has to be a javascript array in the given environment
     setting foo 127.0.0.1:80 #whitespace is preserved
-    setting bar 127.0.0.1:443 #whitespace is preserved
+    setting bar 127.0.0.1:443 --secure #whitespace is preserved
 ```
