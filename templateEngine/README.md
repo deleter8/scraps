@@ -22,7 +22,7 @@ mysettingheader:
 headerwithvariableentries:
 #list1 has to be a javascript array in the given environment
 {% foreach item in list1 %}
-    setting {{item.name}} {{item.host}}:{{item.port}} {% if item.secure %}--secure{% end if %} #whitespace is preserved
+    setting {{item.name}} {{item.host}}:{{item.port}}{% if item.secure %} --secure{% end if %} #whitespace is preserved
 {% end foreach %}
 ```
 
