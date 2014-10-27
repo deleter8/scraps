@@ -153,6 +153,19 @@ function evaluateTreeAsync(tree, environment){
             {
                 return evaluateVariableAsync(tree, environment);
             }
+			case 'if':
+			{
+				var flagExpr = tree['flag'];
+				var evalFlag = evaluateVariableAsync(flagExpr, environment);
+				
+				return evalFlag.then(function(flag){
+					if(!!flag){
+						return evaluateTreeAsync(tree['body'], environment);
+					}else{
+						return Q.fcall(function(){return '';});
+					}
+				})
+			}
             case 'foreach':
             {
                 var listExpr = tree['list'];
@@ -263,6 +276,15 @@ function evaluateTree(tree, environment){
             {
                 return evaluateVariable(tree, environment);
             }
+			case 'if':
+			{
+				var flagExpr = tree['flag'];
+				var flag = evaluateVariable(flagExpr, environment);
+				if(!!flag){
+					return evaluateTree(tree['body'], environment);
+				}
+				return '';
+			}
             case 'foreach':
             {
                 var listExpr = tree['list'];
@@ -340,11 +362,17 @@ function Engine(){
                     "}" +
                 "return argslist;" +
                 "} " +
-            "foreach = '{%' ws 'foreach' ws iter:symbol ws 'in' ws list:variable ws '%}' ([ \t]* ('\\n'))? " +
+            "foreach = '{%' ws? 'foreach' ws iter:symbol ws 'in' ws list:variable ws? '%}' ([ \t]* ('\\n'))? " +
                 "body:blob?  " +
-                "'{%' ws 'end' ws 'foreach' ws '%}' ('\\n')? " +
+                "'{%' ws? 'end' ws 'foreach' ws? '%}' ('\\n')? " +
                 "{return {'token':'foreach', 'var':iter, 'list':list, 'body':body}; } " +
+                "/ conditional " +
+            "conditional = '{%' ws? 'if' ws flag:conditional_flag ws? '%}' ([ \t]* ('\\n'))? " +
+                "body:blob?  " +
+                "'{%' ws? 'end' ws 'if' ws? '%}' ('\\n')? " +
+                "{return {'token':'if', 'flag':flag, 'body':body}; } " +
                 "/ text " +
+			"conditional_flag = variable " +
             "text = text_value:$( ('%'[^\\}])? [^\\{\\}%]+ ) " +
                 "{return {'token':'text', 'data':text_value};} " +
                 " / left_curly_brace "+

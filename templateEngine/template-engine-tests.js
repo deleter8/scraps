@@ -1,5 +1,5 @@
-var Engine = require('./template-engine').Engine;
-var Environment = require('./template-engine').Environment;
+var Engine = require('../blueprint').Engine;
+var Environment = require('../blueprint').Environment;
 var Q = require("q");
 
 //TODO: refactor this to mocha tests rather than just console output that has to be manually verified
@@ -44,6 +44,17 @@ configData =
         "    arrayitem:{{item}} {{__firstMiddleLast('is 1st','is in the middle','is LAST')}}\n" +
         "{% end foreach %}\n" +
         "{% end foreach %}\n" +
+		"There should be nothing between this...\n" +
+		"{% if testFlagFalse %}\n" +
+		"this should never be seen!\n" +
+		"{% end if %}\n" +
+		"...and this!\n" +
+		"However there should be something between this...\n" +
+		"{% if testFlagTrue %}\n" +
+		"   ---like this for example!---\n" +
+		"{% end if %}\n" +
+		"...and this!\n" +
+		
     "";
 
 function TestClass(){
@@ -67,7 +78,9 @@ env = new Environment({
     "twoFunc":function(a,b){return a+a+':'+b},
     "asyncFunc":function(a){return Q.delay(1500).then(function(){return a+a;});},
     "nestedArray":[[1,2,3],[9,8,7],['a','b','c']],
-    "testFirstMiddleLast":[[1,2,3,4],[9,8],['a']]
+    "testFirstMiddleLast":[[1,2,3,4],[9,8],['a']],
+	"testFlagFalse":false,
+	"testFlagTrue":true
 });
 
 console.log(engine.processTemplate(configData, env));
